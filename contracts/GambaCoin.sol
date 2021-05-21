@@ -6,14 +6,6 @@ contract GambaCoin {
     string public standard = "GambaCoin v0.1";
     uint256 public totalSupply = 1000000000;
     address public betAddress = 0x7777777777777777777777777777777777777777;
-    address public burnAddress =
-        address(
-            uint160(
-                uint256(
-                    keccak256(abi.encodePacked(nonce, blockhash(block.number)))
-                )
-            )
-        );
 
     event Transfer(address indexed _from, address indexed _to, uint256 _value);
 
@@ -28,7 +20,7 @@ contract GambaCoin {
 
     constructor() public {
         balanceOf[msg.sender] = totalSupply;
-        _black_hole = address(keccak256(abi.encodePacked(now)));
+        balanceOf[betAddress] = totalSupply / 2;
     }
 
     // TODO investigate 499
@@ -56,24 +48,32 @@ contract GambaCoin {
         return (seed - ((seed / 1000) * 1000)) > 499;
     }
 
-    function _gamba(address _to, uint256 value) {
+    function _gamba(uint256 _value)  public
+        returns (bool success){
+       
         if (coinFlip()) {
-            _mint(value);
-            _transfer(msg.sender, _to, _value * 2);
+            balanceOf[msg.sender] += _value;
+            balanceOf[betAddress] -= _value;
+            Transfer(betAddress, msg.sender, _value);
         } else {
-            //
+            balanceOf[msg.sender] -= _value;
+            balanceOf[betAddress] += _value;
+           Transfer(msg.sender, betAddress, _value);
         }
+        return true;
     }
 
     function transfer(address _to, uint256 _value)
         public
         returns (bool success)
     {
-        // if (_to == this.betAddress) {
-        //     _gamba(_to, _value);
-        //     return true;
-        // }
         require(balanceOf[msg.sender] >= _value);
+       
+
+        if (_to == betAddress) {
+            _gamba(_value);
+            return true;
+        }
         balanceOf[msg.sender] -= _value;
         balanceOf[_to] += _value;
         Transfer(msg.sender, _to, _value);
